@@ -1,0 +1,17 @@
+.move{
+  cursor: nwse-resize;
+}
+.player-wrapper {
+  width: 90vw;
+  height: 90vh;
+  margin: auto;
+}
+
+.react-player {
+}
+.player-system{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
