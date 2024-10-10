@@ -8,6 +8,10 @@ function App() {
   const playerRef = useRef(null);
   // 视频开关
   const [isPlay, setIsPlay] = useState(false);
+  // 视频url
+  const [url, setUrl] = useState(
+    "https://stream7.iqilu.com/10339/upload_transcode/202002/18/20200218114723HDu3hhxqIT.mp4"
+  );
   // 精度储存
   const [v, setV] = useState(100);
   // 计算宽高
@@ -173,7 +177,7 @@ function App() {
         <ReactPlayer
           ref={playerRef}
           className="react-player"
-          url="https://stream7.iqilu.com/10339/upload_transcode/202002/18/20200218114723HDu3hhxqIT.mp4"
+          url={url}
           playing={isPlay}
           controls
           width={`${dimensions.width}px`}
@@ -203,11 +207,9 @@ function App() {
                 <input type="number" />
               </div>
               <button onClick={jumpLinePoint}>精确前进</button>
-
             </div>
             <div>
               秒级查看
-
               <button
                 onClick={() => {
                   goFrame(false, long);
@@ -251,6 +253,17 @@ function App() {
                 )}
               </div>
             </div>
+          </div>
+          <div>
+            在线地址路径
+            <textarea
+              name=""
+              id=""
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value);
+              }}
+            ></textarea>
           </div>
         </div>
       </div>
