@@ -9,9 +9,7 @@ function App() {
   // 视频开关
   const [isPlay, setIsPlay] = useState(false);
   // 视频url
-  const [url, setUrl] = useState(
-    "https://stream7.iqilu.com/10339/upload_transcode/202002/18/20200218114723HDu3hhxqIT.mp4"
-  );
+  const [url, setUrl] = useState("http://vjs.zencdn.net/v/oceans.mp4");
   // 精度储存
   const [v, setV] = useState(100);
   // 计算宽高
@@ -19,14 +17,16 @@ function App() {
   const aspectRatio = dimensions.width / dimensions.height; // 计算初始宽高比
   // 拖动情况开关
   const [isMove, setIsMove] = useState(false);
+  // 拖动文件情况开关
+  const [isMoveFile, setIsMoveFile] = useState(false);
   // 鼠标点下时
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const startX = e.clientX;
     const startY = e.clientY;
     const startWidth = dimensions.width;
     const startHeight = dimensions.height;
     // 拖动触发
-    const onMouseMove = (moveEvent) => {
+    const onMouseMove = (moveEvent: MouseEvent) => {
       const newWidth = startWidth + (moveEvent.clientX - startX);
       const newHeight = newWidth / aspectRatio; // 根据宽高比计算新高度
 
@@ -50,10 +50,20 @@ function App() {
   const inputsRef = useRef(null);
   // 时间值
   const [inputValue, setInputValue] = useState("");
-  // 处理输入变化
-  const handleChange = (event) => {
-    setInputValue(event.target.value);
-  };
+  // 关于react的渲染机制，如果你需要一个持续使用的函数，直接使用
+  // inputValue是不会改变的，因为在
+  // 那个函数没有删除的情况下inputValue他的值不会重新渲染，外层的inputValue
+  // 已经变化了都是这样，所以尝试给他一个动态的值而不是定义的数值，可使用ref
+  // 封装inputValue，同时让其监听inputValue最新的值，这个inputValueRef.current
+  // 对于react来说没有固定的值，需要每次都获取最新的值
+  const inputValueRef = useRef(inputValue);
+
+  
+    // 在 inputValue 更新时更新 ref
+    useEffect(() => {
+      inputValueRef.current = inputValue;
+  }, [inputValue]);
+
   // 格式字符串解析小时、分钟、秒和毫秒 成秒
   // 格式需要00.00.00.00
   function convertToSeconds(timeString: string) {
@@ -107,9 +117,12 @@ function App() {
     // 返回拼接后的字符串，若没有任何单位则返回“0”
     return result.length > 0 ? result.join(" ") : "0";
   }
+  // 秒级单位ref
+  const secondInputRef = useRef(null);
   // 跳转时间段
   const jumpPoint = () => {
-    playerRef.current.seekTo(inputValue, "seconds");
+    playerRef.current.seekTo(Number(secondInputRef.current.value), "seconds");
+    return secondInputRef.current.value + "秒";
   };
   // 跳转精确时间段
   const jumpLinePoint = () => {
@@ -141,9 +154,8 @@ function App() {
   };
   // 查看每一帧
   const goFrame = (isUp = true, long = 1000) => {
-    const nowValue = Number(inputValue);
-
-    console.log(nowValue);
+    const nowValue = Number(inputValueRef.current); // 使用 ref 获取最新的 inputValue
+    console.log(inputValue);
 
     // 将 long 转换为秒
     const millisecondsToSeconds = long / 1000;
@@ -164,15 +176,79 @@ function App() {
   const progress = (play) => {
     setInputValue(play.playedSeconds);
   };
+  // 获取本地文件
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // 创建一个本地 URL
+      const fileURL = URL.createObjectURL(file);
+      setUrl(fileURL);
+    }
+  };
 
+  // 处理拖放进来的事件
+  const handleDrop = (event) => {
+    event.preventDefault();
+
+    const file = event.dataTransfer.files[0];
+    if (file && file.type.startsWith("video/")) {
+      const fileURL = URL.createObjectURL(file);
+      setUrl(fileURL);
+    }
+    // 关闭拖拽布尔值
+    setIsMoveFile(false);
+  };
+
+  // 处理拖拽进入区域
+  const handleDragOver = (event) => {
+    event.preventDefault(); // 防止浏览器打开文件
+    // 开启拖拽布尔值
+    setIsMoveFile(true);
+  };
+  // 处理拖拽离开区域
+  const handleDragLeave = (event) => {
+    // 关闭拖拽布尔值
+    setIsMoveFile(false);
+  };
+
+  // 键盘点击事件
+  const handleKeyPress = (event) => {
+    switch (event.code) {
+      case "Space":
+        event.preventDefault(); // 阻止默认的空格行为（如滚动页面）
+        setIsPlay((prev) => !prev); // 切换播放/暂停状态
+        break;
+      case "ArrowLeft":
+        event.preventDefault(); // 阻止默认的空格行为（如滚动页面）
+        goFrame(false, long); // 左箭头
+        break;
+      case "ArrowRight":
+        event.preventDefault(); // 阻止默认的空格行为（如滚动页面）
+        goFrame(true, long); // 右箭头
+        break;
+      default:
+        break;
+    }
+  };
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress); // 组件卸载时移除事件监听
+    };
+  }, []);
   return (
     <>
       {/* 导航栏 */}
-      <Navbar></Navbar>
+      <Navbar inputValue={inputValue}></Navbar>
       {/* 视图区 */}
       <div
-        className={`player-wrapper ${isMove ? "move" : ""}`}
+        className={`player-wrapper ${isMove ? "move" : ""} ${
+          isMoveFile ? "fmove" : ""
+        } `}
         onMouseDown={handleMouseDown}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
       >
         <ReactPlayer
           ref={playerRef}
@@ -186,29 +262,17 @@ function App() {
           onProgress={progress}
         ></ReactPlayer>
         <div className="player-system">
-          <button
-            onClick={() => {
-              setIsPlay(!isPlay);
-            }}
-          >
-            暂停/播放
-          </button>
-          <div>
-            <button onClick={jumpPoint}>
-              前进到 {formatTime(Number(inputValue))}
-            </button>
-            <input type="number" value={inputValue} onChange={handleChange} />
-            <div>
-              <div ref={inputsRef}>
-                时<input type="number" />
-                分<input type="number" />
-                秒<input type="number" />
-                毫秒
-                <input type="number" />
-              </div>
-              <button onClick={jumpLinePoint}>精确前进</button>
+          <div className="player-system-1">
+            <div className="player-system-1-play">
+              <button
+                onClick={() => {
+                  setIsPlay(!isPlay);
+                }}
+              >
+                暂停/播放
+              </button>
             </div>
-            <div>
+            <div className="player-system-1-run">
               秒级查看
               <button
                 onClick={() => {
@@ -232,6 +296,9 @@ function App() {
                   setLong(Number(e.target.value));
                 }}
               />
+              <strong style={{ margin: "0 5px" }}>
+                time(秒): {formatTime(Number(inputValue))}
+              </strong>
               <div>
                 {/* 判断是否选择了高速监听 */}
                 {v === 100 ? (
@@ -239,6 +306,7 @@ function App() {
                     onClick={() => {
                       setV(10);
                     }}
+                    style={{ fontSize: ".8rem" }}
                   >
                     提升视频数据精度（增加卡顿）
                   </button>
@@ -254,16 +322,41 @@ function App() {
               </div>
             </div>
           </div>
-          <div>
-            在线地址路径
-            <textarea
-              name=""
-              id=""
+          <div className="player-system-2">
+            <div>
+              <button onClick={jumpPoint}>
+                前进到 {secondInputRef?.current?.value || 0} 秒
+              </button>
+              <input type="number" ref={secondInputRef} />
+            </div>
+            <div>
+              <div ref={inputsRef}>
+                时<input type="number" />
+                分<input type="number" />
+                秒<input type="number" />
+                毫秒
+                <input type="number" />
+              </div>
+              <button onClick={jumpLinePoint}>精确前进</button>
+            </div>
+          </div>
+          <div
+            className="player-system-3"
+            onMouseDown={(e) => e.stopPropagation()} // 阻止事件冒泡
+          >
+            输入<strong> 在线地址路径</strong> 或 <strong>拖拽视频</strong>{" "}
+            到网页里
+            <input
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value);
               }}
-            ></textarea>
+            ></input>
+            <input
+              type="file"
+              accept="video/*" // 只接受视频文件
+              onChange={handleFileChange}
+            />
           </div>
         </div>
       </div>
